@@ -37,7 +37,7 @@ model Post {
   id               String   @id @default(cuid())
   title            String
   slug             String   @unique
-  content          String
+  content          String @db.LongText
   published        Boolean  @default(false)
   publishAt        DateTime?
   seoTitle         String?
@@ -57,7 +57,7 @@ model Page {
   id               String   @id @default(cuid())
   title            String
   slug             String   @unique
-  content          String
+  content          String @db.LongText
   published        Boolean  @default(false)
   publishAt        DateTime?
   seoTitle         String?
