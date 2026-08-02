@@ -23,7 +23,7 @@ const http = require("http");
 
 const LOGS_DIR = path.join(process.cwd(), "ops", "logs");
 const BACKUPS_DIR = path.join(process.cwd(), "ops", "backups");
-const SITE_URL = process.env.SITE_URL || "https://kazzonamarketing.com";
+const SITE_URL = process.env.SITE_URL || "https://kazzona.com";
 
 function ensureDirs() {
   [LOGS_DIR, BACKUPS_DIR].forEach((dir) => {

@@ -8,7 +8,7 @@
 const https = require("https");
 const http = require("http");
 
-const SITE_URL = process.env.SITE_URL || "https://kazzonamarketing.com";
+const SITE_URL = process.env.SITE_URL || "https://kazzona.com";
 const TIMEOUT_MS = 15000;
 
 function check(url) {
