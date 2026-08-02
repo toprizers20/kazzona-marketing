@@ -1,0 +1,11 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#ff9d00" />
+      <stop offset="100%" stop-color="#ea3b00" />
+    </linearGradient>
+  </defs>
+  <!-- No background rect, so it's transparent outside the circle -->
+  <circle cx="256" cy="256" r="256" fill="url(#grad)" />
+  <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="320" fill="white">K</text>
+</svg>

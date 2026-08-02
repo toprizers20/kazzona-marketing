@@ -1,0 +1,152 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "debian-openssl-1.1.x", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  otpSecret    String?
+  otpExpiresAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Lead {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  company   String?
+  service   String
+  message   String
+  status    String   @default("NEW") // NEW, IN_PROGRESS, CONVERTED, CLOSED
+  source    String   @default("contact-form") // contact-form, newsletter, whatsapp, organic
+  createdAt DateTime @default(now())
+}
+
+model Post {
+  id               String   @id @default(cuid())
+  title            String
+  slug             String   @unique
+  content          String
+  published        Boolean  @default(false)
+  publishAt        DateTime?
+  seoTitle         String?
+  seoDesc          String?
+  schemaMarkup     String?
+  headerScript     String?
+  canonicalUrl     String?
+  imageAlt         String?
+  authorId         String
+  primaryKeyword   String?
+  secondaryKeyword String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Page {
+  id               String   @id @default(cuid())
+  title            String
+  slug             String   @unique
+  content          String
+  published        Boolean  @default(false)
+  publishAt        DateTime?
+  seoTitle         String?
+  seoDesc          String?
+  schemaMarkup     String?
+  headerScript     String?
+  canonicalUrl     String?
+  imageAlt         String?
+  authorId         String?
+  primaryKeyword   String?
+  secondaryKeyword String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model SiteSettings {
+  id               String   @id @default("global")
+  gaTrackingId     String?
+  gtmContainerId   String?
+  gscVerification  String?
+  robotsTxt        String?
+  globalHeadCode   String?
+  defaultLang      String   @default("en")
+  headerConfig     String?
+  footerConfig     String?
+  pricingConfig    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Redirect {
+  id          String   @id @default(cuid())
+  fromPath    String   @unique
+  toPath      String
+  statusCode  Int      @default(301)
+  createdAt   DateTime @default(now())
+}
+
+model AiGenerationTask {
+  id           String   @id @default(cuid())
+  topic        String
+  keyword      String?
+  instructions String?
+  type         String   @default("BLOG") // BLOG or PAGE
+  targetDate   DateTime
+  status       String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model PageView {
+  id        String   @id @default(cuid())
+  visitorId String   // anonymous fingerprint / cookie-based ID
+  path      String   // e.g. "/blog/my-post"
+  referrer  String?  // where they came from
+  userAgent String?
+  country   String?
+  device    String?  // "mobile" | "desktop" | "tablet"
+  createdAt DateTime @default(now())
+}
+
+model ActiveVisitor {
+  id        String   @id @default(cuid())
+  visitorId String   @unique // one row per visitor
+  path      String   // current page
+  lastSeen  DateTime @default(now())
+}
+
+model BackupLog {
+  id           String   @id @default(cuid())
+  filename     String
+  filepath     String
+  sizeBytes    Int
+  integrityOk  Boolean  @default(false)
+  integrityMsg String?
+  triggerType  String   @default("manual") // scheduled | pre-deploy | manual
+  status       String   @default("created") // created | verified | failed | deleted
+  createdAt    DateTime @default(now())
+}
+
+model DeployLog {
+  id          String    @id @default(cuid())
+  fromBranch  String
+  toBranch    String
+  commitHash  String?
+  commitMsg   String?
+  status      String    @default("pending") // pending | building | success | failed | rolled-back
+  backupId    String?
+  errorMsg    String?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+}

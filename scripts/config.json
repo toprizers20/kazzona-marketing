@@ -1,0 +1,142 @@
+{
+  "enabled": false,
+  "intervalSeconds": 60,
+  "lastGeneratedAt": "2026-07-01T15:27:39.873Z",
+  "history": [
+    {
+      "topic": "Digital Marketing Agency in Green Park | Kazzona Marketing",
+      "type": "BLOG",
+      "slug": "digital-marketing-agency-in-green-park-kazzona-marketing",
+      "status": "COMPLETED",
+      "timestamp": "2026-07-01T15:27:39.873Z",
+      "primaryKeyword": "Digital Marketing Agency in Green Park | Kazzona Marketing",
+      "secondaryKeyword": "inbound marketing, brand awareness, conversion rate, social channels"
+    },
+    {
+      "topic": "Performance Marketing Company in Hauz Khas | Kazzona Marketing",
+      "type": "BLOG",
+      "slug": "performance-marketing-company-in-hauz-khas-kazzona-marketing",
+      "status": "COMPLETED",
+      "timestamp": "2026-07-01T15:27:30.227Z",
+      "primaryKeyword": "Performance Marketing Company in Hauz Khas | Kazzona Marketing",
+      "secondaryKeyword": "inbound marketing, brand awareness, conversion rate, social channels"
+    },
+    {
+      "topic": "Advertising Agency in Hauz Khas | Kazzona Marketing",
+      "type": "BLOG",
+      "slug": "advertising-agency-in-hauz-khas-kazzona-marketing",
+      "status": "COMPLETED",
+      "timestamp": "2026-07-01T13:27:25.816Z",
+      "primaryKeyword": "Advertising Agency in Hauz Khas | Kazzona Marketing",
+      "secondaryKeyword": "inbound marketing, brand awareness, conversion rate, social channels"
+    },
+    {
+      "topic": "Website Development Company in Hauz Khas | Kazzona Marketing",
+      "type": "BLOG",
+      "slug": "website-development-company-in-hauz-khas-kazzona-marketing",
+      "status": "COMPLETED",
+      "timestamp": "2026-07-01T13:25:22.834Z",
+      "primaryKeyword": "Website Development Company in Hauz Khas | Kazzona Marketing",
+      "secondaryKeyword": "inbound marketing, brand awareness, conversion rate, social channels"
+    },
+    {
+      "topic": "SEO Company in Hauz Khas | Kazzona Marketing",
+      "type": "BLOG",
+      "slug": "seo-company-in-hauz-khas-kazzona-marketing",
+      "status": "COMPLETED",
+      "timestamp": "2026-07-01T13:24:13.204Z",
+      "primaryKeyword": "SEO Company in Hauz Khas | Kazzona Marketing",
+      "secondaryKeyword": "organic traffic, on-page SEO, keyword research, link building"
+    },
+    {
+      "topic": "Digital Marketing Agency in Hauz Khas | Kazzona Marketing",
+      "type": "BLOG",
+      "slug": "digital-marketing-agency-in-hauz-khas-kazzona-marketing",
+      "status": "COMPLETED",
+      "timestamp": "2026-07-01T13:22:24.856Z",
+      "primaryKeyword": "Digital Marketing Agency in Hauz Khas | Kazzona Marketing",
+      "secondaryKeyword": "inbound marketing, brand awareness, conversion rate, social channels"
+    },
+    {
+      "topic": "Performance Marketing Company in Defence Colony | Kazzona Marketing",
+      "type": "BLOG",
+      "slug": "performance-marketing-company-in-defence-colony-kazzona-marketing",
+      "status": "COMPLETED",
+      "timestamp": "2026-07-01T13:20:23.058Z",
+      "primaryKeyword": "Performance Marketing Company in Defence Colony | Kazzona Marketing",
+      "secondaryKeyword": "inbound marketing, brand awareness, conversion rate, social channels"
+    },
+    {
+      "topic": "Advertising Agency in Defence Colony | Kazzona Marketing",
+      "type": "BLOG",
+      "slug": "advertising-agency-in-defence-colony-kazzona-marketing",
+      "status": "COMPLETED",
+      "timestamp": "2026-07-01T13:18:46.722Z",
+      "primaryKeyword": "Advertising Agency in Defence Colony | Kazzona Marketing",
+      "secondaryKeyword": "inbound marketing, brand awareness, conversion rate, social channels"
+    },
+    {
+      "topic": "Website Development Company in Defence Colony | Kazzona Marketing",
+      "type": "BLOG",
+      "slug": "website-development-company-in-defence-colony-kazzona-marketing",
+      "status": "COMPLETED",
+      "timestamp": "2026-07-01T13:16:30.606Z",
+      "primaryKeyword": "Website Development Company in Defence Colony | Kazzona Marketing",
+      "secondaryKeyword": "inbound marketing, brand awareness, conversion rate, social channels"
+    },
+    {
+      "topic": "SEO Company in Defence Colony | Kazzona Marketing",
+      "type": "BLOG",
+      "slug": "seo-company-in-defence-colony-kazzona-marketing",
+      "status": "COMPLETED",
+      "timestamp": "2026-07-01T13:14:22.263Z",
+      "primaryKeyword": "SEO Company in Defence Colony | Kazzona Marketing",
+      "secondaryKeyword": "organic traffic, on-page SEO, keyword research, link building"
+    },
+    {
+      "topic": "Digital Marketing Agency in Defence Colony | Kazzona Marketing",
+      "type": "BLOG",
+      "slug": "digital-marketing-agency-in-defence-colony-kazzona-marketing",
+      "status": "COMPLETED",
+      "timestamp": "2026-07-01T13:12:21.521Z",
+      "primaryKeyword": "Digital Marketing Agency in Defence Colony | Kazzona Marketing",
+      "secondaryKeyword": "inbound marketing, brand awareness, conversion rate, social channels"
+    },
+    {
+      "topic": "Performance Marketing Company in Greater Kailash | Kazzona Marketing",
+      "type": "BLOG",
+      "slug": "performance-marketing-company-in-greater-kailash-kazzona-marketing",
+      "status": "COMPLETED",
+      "timestamp": "2026-07-01T13:10:22.242Z",
+      "primaryKeyword": "Performance Marketing Company in Greater Kailash | Kazzona Marketing",
+      "secondaryKeyword": "inbound marketing, brand awareness, conversion rate, social channels"
+    },
+    {
+      "topic": "Advertising Agency in Greater Kailash | Kazzona Marketing",
+      "type": "BLOG",
+      "slug": "advertising-agency-in-greater-kailash-kazzona-marketing",
+      "status": "COMPLETED",
+      "timestamp": "2026-07-01T13:08:22.971Z",
+      "primaryKeyword": "Advertising Agency in Greater Kailash | Kazzona Marketing",
+      "secondaryKeyword": "inbound marketing, brand awareness, conversion rate, social channels"
+    },
+    {
+      "topic": "Website Development Company in Greater Kailash | Kazzona Marketing",
+      "type": "BLOG",
+      "slug": "website-development-company-in-greater-kailash-kazzona-marketing",
+      "status": "COMPLETED",
+      "timestamp": "2026-07-01T13:05:28.605Z",
+      "primaryKeyword": "Website Development Company in Greater Kailash | Kazzona Marketing",
+      "secondaryKeyword": "inbound marketing, brand awareness, conversion rate, social channels"
+    },
+    {
+      "topic": "SEO Company in Greater Kailash | Kazzona Marketing",
+      "type": "BLOG",
+      "slug": "seo-company-in-greater-kailash-kazzona-marketing",
+      "status": "COMPLETED",
+      "timestamp": "2026-07-01T13:03:29.910Z",
+      "primaryKeyword": "SEO Company in Greater Kailash | Kazzona Marketing",
+      "secondaryKeyword": "organic traffic, on-page SEO, keyword research, link building"
+    }
+  ]
+}
