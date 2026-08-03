@@ -103,8 +103,19 @@ export async function POST(req: Request) {
           console.warn("Failed to parse AI meta tags, using fallbacks.");
         }
 
-        // 3. Download Banner Image locally (must succeed before publishing)
-        const slug = slugify(topic);
+        // 3. Ensure unique slug
+        const baseSlug = slugify(topic);
+        let uniqueSlug = baseSlug;
+        let counter = 1;
+        while (true) {
+          const existingPost = await prisma.post.findUnique({ where: { slug: uniqueSlug } });
+          const existingPage = await prisma.page.findUnique({ where: { slug: uniqueSlug } });
+          if (!existingPost && !existingPage) break;
+          uniqueSlug = `${baseSlug}-${counter}`;
+          counter++;
+        }
+
+        // 4. Download Banner Image locally (must succeed before publishing)
         let localImagePath: string;
         try {
           const imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(topic + ' professional modern digital marketing illustration banner')}?width=1200&height=630&nologo=true`;
@@ -119,16 +130,16 @@ export async function POST(req: Request) {
           if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
           }
-          const filepath = path.join(uploadDir, `${slug}.jpg`);
+          const filepath = path.join(uploadDir, `${uniqueSlug}.jpg`);
           fs.writeFileSync(filepath, buf);
-          localImagePath = `/uploads/banners/${slug}.jpg`;
+          localImagePath = `/uploads/banners/${uniqueSlug}.jpg`;
         } catch (imgErr: any) {
           throw new Error(`Banner image generation failed: ${imgErr.message}`);
         }
         const imageHtml = `<img src="${localImagePath}" alt="${topic}" class="w-full h-[400px] object-cover rounded-2xl mb-8 border border-border/40 shadow-sm" />\n`;
         rawHtmlContent = imageHtml + rawHtmlContent;
 
-        // 4. Inject Internal Linking
+        // 5. Inject Internal Linking
         try {
           const posts = await prisma.post.findMany({ take: 5 });
           if (posts.length > 0) {
@@ -143,12 +154,12 @@ export async function POST(req: Request) {
           console.warn("Failed to fetch posts for internal linking:", err.message);
         }
 
-        // 5. Create content in DB
+        // 6. Create content in DB
         if (task.type === "PAGE") {
           await prisma.page.create({
             data: {
               title: topic,
-              slug,
+              slug: uniqueSlug,
               content: rawHtmlContent,
               seoTitle,
               seoDesc,
@@ -160,7 +171,7 @@ export async function POST(req: Request) {
           await prisma.post.create({
             data: {
               title: topic,
-              slug,
+              slug: uniqueSlug,
               content: rawHtmlContent,
               seoTitle,
               seoDesc,
