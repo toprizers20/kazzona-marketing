@@ -31,6 +31,11 @@ model Lead {
   status    String   @default("NEW") // NEW, IN_PROGRESS, CONVERTED, CLOSED
   source    String   @default("contact-form") // contact-form, newsletter, whatsapp, organic
   createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([status])
+  @@index([source])
+  @@index([createdAt])
 }
 
 model Post {
@@ -51,6 +56,11 @@ model Post {
   secondaryKeyword String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  @@index([published])
+  @@index([publishAt])
+  @@index([authorId])
+  @@index([createdAt])
 }
 
 model Page {
@@ -71,6 +81,10 @@ model Page {
   secondaryKeyword String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  @@index([published])
+  @@index([publishAt])
+  @@index([createdAt])
 }
 
 model SiteSettings {
@@ -106,6 +120,9 @@ model AiGenerationTask {
   status       String   @default("PENDING") // PENDING, COMPLETED, FAILED
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([status])
+  @@index([targetDate])
 }
 
 model PageView {
@@ -117,6 +134,11 @@ model PageView {
   country   String?
   device    String?  // "mobile" | "desktop" | "tablet"
   createdAt DateTime @default(now())
+
+  @@index([visitorId])
+  @@index([path])
+  @@index([createdAt])
+  @@index([device])
 }
 
 model ActiveVisitor {
@@ -124,13 +146,15 @@ model ActiveVisitor {
   visitorId String   @unique // one row per visitor
   path      String   // current page
   lastSeen  DateTime @default(now())
+
+  @@index([lastSeen])
 }
 
 model BackupLog {
   id           String   @id @default(cuid())
   filename     String
   filepath     String
-  sizeBytes    Int
+  sizeBytes    BigInt
   integrityOk  Boolean  @default(false)
   integrityMsg String?
   triggerType  String   @default("manual") // scheduled | pre-deploy | manual

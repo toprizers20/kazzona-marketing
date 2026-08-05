@@ -39,15 +39,22 @@ export default async function BlogPage() {
     ]
   };
 
-  const [posts, totalCount] = await Promise.all([
-    prisma.post.findMany({
-      where: whereCondition,
-      orderBy: { createdAt: "desc" },
-      skip: 0,
-      take: limit,
-    }),
-    prisma.post.count({ where: whereCondition })
-  ]);
+  let posts: Awaited<ReturnType<typeof prisma.post.findMany>> = [];
+  let totalCount = 0;
+
+  try {
+    [posts, totalCount] = await Promise.all([
+      prisma.post.findMany({
+        where: whereCondition,
+        orderBy: { createdAt: "desc" },
+        skip: 0,
+        take: limit,
+      }),
+      prisma.post.count({ where: whereCondition })
+    ]);
+  } catch {
+    // DB unavailable — show empty blog with static UI
+  }
 
   const serializedPosts = posts.map(p => ({
     id: p.id,

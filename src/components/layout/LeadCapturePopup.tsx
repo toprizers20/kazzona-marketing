@@ -66,8 +66,9 @@ export function LeadCapturePopup() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-[100] w-[calc(100vw-2rem)] sm:w-[420px] animate-in slide-in-from-bottom-5 fade-in duration-300">
-      <div className="bg-card/95 backdrop-blur-xl border border-border/60 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-primary/20 relative overflow-hidden group">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleClose} />
+      <div className="relative bg-card/95 backdrop-blur-xl border border-border/60 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-primary/20 w-full max-w-[420px] animate-in slide-in-from-bottom-5 fade-in duration-300 group">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
         <button

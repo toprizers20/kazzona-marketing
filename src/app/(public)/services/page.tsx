@@ -1,11 +1,17 @@
 import { ServicesEcosystem } from "@/components/sections/homepage/services-ecosystem";
 import { prisma } from "@/lib/db";
 import { Metadata } from "next";
+import { sanitizeSchemaMarkup, sanitizeHeaderScript } from "@/lib/sanitize";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const page = await prisma.page.findUnique({
-    where: { slug: "services" },
-  });
+  let page = null;
+  try {
+    page = await prisma.page.findUnique({
+      where: { slug: "services" },
+    });
+  } catch {
+    // DB unavailable — use hardcoded defaults
+  }
 
   const title = page?.seoTitle || "Our Services | Kazzona Marketing";
   const description = page?.seoDesc || "360° Digital Growth Solutions for organic SEO, performance ads, web development, and email marketing.";
@@ -53,22 +59,27 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ServicesPage() {
-  const page = await prisma.page.findUnique({
-    where: { slug: "services" },
-  });
+  let page = null;
+  try {
+    page = await prisma.page.findUnique({
+      where: { slug: "services" },
+    });
+  } catch {
+    // DB unavailable — render services without CMS overrides
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
-      {page?.schemaMarkup && (
+      {page?.schemaMarkup && sanitizeSchemaMarkup(page.schemaMarkup) && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: page.schemaMarkup }}
+          dangerouslySetInnerHTML={{ __html: sanitizeSchemaMarkup(page.schemaMarkup)! }}
         />
       )}
-      {page?.headerScript && (
+      {page?.headerScript && sanitizeHeaderScript(page.headerScript) && (
         <div
           style={{ display: "none" }}
-          dangerouslySetInnerHTML={{ __html: page.headerScript }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHeaderScript(page.headerScript)! }}
         />
       )}
       <div className="container mx-auto px-6 pt-24 pb-12 max-w-5xl">

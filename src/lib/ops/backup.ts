@@ -1,10 +1,12 @@
 import fs from "fs";
 import path from "path";
+import { execFile, spawn } from "child_process";
+import { promisify } from "util";
 import { prisma } from "@/lib/db";
 import { backupLog, restoreLog } from "./logger";
 
+const execFileAsync = promisify(execFile);
 const BACKUPS_DIR = path.join(process.cwd(), "ops", "backups");
-const DB_PATH = path.join(process.cwd(), "prisma", "dev.db");
 const MAX_BACKUPS = 20;
 
 function ensureBackupsDir() {
@@ -16,6 +18,23 @@ function ensureBackupsDir() {
 function getTimestamp(): string {
   const now = new Date();
   return now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+}
+
+function parseDatabaseUrl(): { host: string; port: string; user: string; password: string; database: string } {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_URL environment variable is not set");
+  
+  const regex = /mysql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/;
+  const match = url.match(regex);
+  if (!match) throw new Error("Invalid DATABASE_URL format. Expected: mysql://user:password@host:port/database");
+  
+  return {
+    user: match[1],
+    password: match[2],
+    host: match[3],
+    port: match[4],
+    database: match[5],
+  };
 }
 
 export interface BackupResult {
@@ -31,22 +50,40 @@ export interface BackupResult {
 export async function createBackup(triggerType: string = "manual"): Promise<BackupResult> {
   ensureBackupsDir();
 
-  const filename = `backup-${getTimestamp()}.db`;
+  const filename = `backup-${getTimestamp()}.sql`;
   const filepath = path.join(BACKUPS_DIR, filename);
 
   try {
-    // Copy the database file
-    fs.copyFileSync(DB_PATH, filepath);
+    const db = parseDatabaseUrl();
+
+    // Run mysqldump using execFile to prevent command injection
+    // Use MYSQL_PWD env var to avoid password visible in ps output
+    const { stdout } = await execFileAsync("mysqldump", [
+      "-h", db.host,
+      "-P", db.port,
+      "-u", db.user,
+      db.database,
+      "--single-transaction",
+      "--routines",
+      "--triggers",
+    ], { timeout: 120000, maxBuffer: 50 * 1024 * 1024, env: { ...process.env, MYSQL_PWD: db.password } });
+
+    // Write dump output to file
+    fs.writeFileSync(filepath, stdout, "utf-8");
 
     // Get file size
     const stats = fs.statSync(filepath);
     const sizeBytes = stats.size;
 
-    // Verify integrity
-    const { ok: integrityOk, message: integrityMsg } = await verifyBackupFile(filepath);
+    if (sizeBytes === 0) {
+      fs.unlinkSync(filepath);
+      return { success: false, error: "Backup file is empty" };
+    }
+
+    // Verify integrity — check file starts with valid SQL comments
+    const { ok: integrityOk, message: integrityMsg } = verifyBackupFile(filepath);
 
     if (!integrityOk) {
-      // Delete corrupt backup
       fs.unlinkSync(filepath);
       backupLog("ERROR", `Backup created but failed integrity check: ${integrityMsg}`, {
         filename,
@@ -78,15 +115,20 @@ export async function createBackup(triggerType: string = "manual"): Promise<Back
     await rotateBackups();
 
     return { success: true, filename, filepath, sizeBytes, integrityOk: true, integrityMsg };
-  } catch (err: any) {
-    backupLog("ERROR", `Backup failed: ${err.message}`, { triggerType });
-    return { success: false, error: err.message };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    backupLog("ERROR", `Backup failed: ${message}`, { triggerType });
+    // Clean up empty file if created
+    if (fs.existsSync(filepath)) {
+      const stats = fs.statSync(filepath);
+      if (stats.size === 0) fs.unlinkSync(filepath);
+    }
+    return { success: false, error: message };
   }
 }
 
-async function verifyBackupFile(filepath: string): Promise<{ ok: boolean; message: string }> {
+function verifyBackupFile(filepath: string): { ok: boolean; message: string } {
   try {
-    // Check file exists and has content
     if (!fs.existsSync(filepath)) {
       return { ok: false, message: "File does not exist" };
     }
@@ -95,22 +137,23 @@ async function verifyBackupFile(filepath: string): Promise<{ ok: boolean; messag
       return { ok: false, message: "File is empty" };
     }
 
-    // For SQLite, we can do a basic check by opening it
-    // A more thorough check would use sqlite3 CLI, but this is sufficient
-    const buffer = Buffer.alloc(16);
+    // Read first 500 bytes to check for mysqldump header
     const fd = fs.openSync(filepath, "r");
-    fs.readSync(fd, buffer, 0, 16, 0);
+    const buffer = Buffer.alloc(500);
+    fs.readSync(fd, buffer, 0, 500, 0);
     fs.closeSync(fd);
 
-    // Check SQLite header magic
-    const header = buffer.toString("utf-8", 0, 16);
-    if (!header.startsWith("SQLite format 3")) {
-      return { ok: false, message: "Not a valid SQLite file" };
+    const header = buffer.toString("utf-8", 0, 500);
+    
+    // mysqldump files typically start with comments like "-- MySQL dump" or "-- Host:"
+    if (header.includes("-- MySQL dump") || header.includes("-- Host:") || header.includes("CREATE TABLE") || header.includes("INSERT INTO")) {
+      return { ok: true, message: "Valid MySQL dump, integrity OK" };
     }
 
-    return { ok: true, message: "Valid SQLite file, integrity OK" };
-  } catch (err: any) {
-    return { ok: false, message: `Verification error: ${err.message}` };
+    return { ok: false, message: "Not a valid MySQL dump file" };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return { ok: false, message: `Verification error: ${message}` };
   }
 }
 
@@ -118,7 +161,7 @@ export async function verifyBackup(backupId: string): Promise<{ ok: boolean; mes
   const backup = await prisma.backupLog.findUnique({ where: { id: backupId } });
   if (!backup) return { ok: false, message: "Backup not found" };
 
-  const result = await verifyBackupFile(backup.filepath);
+  const result = verifyBackupFile(backup.filepath);
 
   await prisma.backupLog.update({
     where: { id: backupId },
@@ -143,7 +186,6 @@ export async function rotateBackups() {
 
   if (backups.length <= MAX_BACKUPS) return;
 
-  // Delete oldest backups beyond the limit
   const toDelete = backups.slice(MAX_BACKUPS);
 
   for (const backup of toDelete) {
@@ -156,8 +198,9 @@ export async function rotateBackups() {
         data: { status: "deleted" },
       });
       backupLog("INFO", `Rotated old backup: ${backup.filename}`);
-    } catch (err: any) {
-      backupLog("WARN", `Failed to delete old backup ${backup.filename}: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      backupLog("WARN", `Failed to delete old backup ${backup.filename}: ${message}`);
     }
   }
 }
@@ -176,28 +219,57 @@ export async function restoreBackup(filename: string): Promise<{ success: boolea
   }
 
   // Verify integrity before restore
-  const { ok } = await verifyBackupFile(backup.filepath);
+  const { ok } = verifyBackupFile(backup.filepath);
   if (!ok) {
     return { success: false, error: "Backup file is corrupt, cannot restore" };
   }
 
   try {
-    // Create a pre-restore backup of current state
-    const preRestoreFilename = `pre-restore-${getTimestamp()}.db`;
-    const preRestorePath = path.join(BACKUPS_DIR, preRestoreFilename);
-    fs.copyFileSync(DB_PATH, preRestorePath);
+    const db = parseDatabaseUrl();
 
-    // Restore the backup
-    fs.copyFileSync(backup.filepath, DB_PATH);
+    // Create a pre-restore backup
+    const preRestoreFilename = `pre-restore-${getTimestamp()}.sql`;
+    const preRestorePath = path.join(BACKUPS_DIR, preRestoreFilename);
+    const { stdout: preRestoreDump } = await execFileAsync("mysqldump", [
+      "-h", db.host,
+      "-P", db.port,
+      "-u", db.user,
+      db.database,
+      "--single-transaction",
+      "--routines",
+      "--triggers",
+    ], { timeout: 120000, maxBuffer: 50 * 1024 * 1024, env: { ...process.env, MYSQL_PWD: db.password } });
+    fs.writeFileSync(preRestorePath, preRestoreDump, "utf-8");
+
+    // Restore the backup — use spawn with stdin pipe to avoid shell injection
+    // Use MYSQL_PWD env var to avoid password visible in ps output
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn("mysql", [
+        "-h", db.host,
+        "-P", db.port,
+        "-u", db.user,
+        db.database,
+      ], { timeout: 120000, env: { ...process.env, MYSQL_PWD: db.password } });
+
+      child.stdin.write(fs.readFileSync(backup.filepath, "utf-8"));
+      child.stdin.end();
+
+      child.on("close", (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`mysql exited with code ${code}`));
+      });
+      child.on("error", reject);
+    });
 
     restoreLog("SUCCESS", `Restored from backup: ${filename}`, {
       preRestoreBackup: preRestoreFilename,
     });
 
     return { success: true };
-  } catch (err: any) {
-    restoreLog("ERROR", `Restore failed: ${err.message}`, { filename });
-    return { success: false, error: err.message };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    restoreLog("ERROR", `Restore failed: ${message}`, { filename });
+    return { success: false, error: message };
   }
 }
 

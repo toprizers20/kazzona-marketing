@@ -13,7 +13,6 @@ interface BlogPost {
   title: string;
   primaryKeyword: string | null;
   createdAt: string;
-  seoDesc: string | null;
 }
 
 const tagColors = [
@@ -57,7 +56,7 @@ export default function BlogListClient({ initialPosts, totalCount }: { initialPo
         ) : (
           posts.map((post, idx) => {
             const tagColor = tagColors[idx % tagColors.length];
-            const readTime = estimateReadTime(post.title, post.seoDesc);
+            const readTime = estimateReadTime(post.title, "");
 
             return (
               <Link
@@ -82,13 +81,6 @@ export default function BlogListClient({ initialPosts, totalCount }: { initialPo
                     <h3 className="font-heading text-[17px] font-bold text-gray-900 mb-3 group-hover:text-[#F97316] transition-colors line-clamp-2 leading-snug">
                       {post.title}
                     </h3>
-
-                    {/* Description */}
-                    {post.seoDesc && (
-                      <p className="text-gray-400 text-sm line-clamp-2 mb-5 leading-relaxed">
-                        {post.seoDesc}
-                      </p>
-                    )}
 
                     {/* Bottom row */}
                     <div className="mt-auto flex items-center justify-between pt-4 border-t border-gray-50">

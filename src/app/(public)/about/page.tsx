@@ -5,11 +5,17 @@ import TimelineAnimation from "@/components/TimelineAnimation";
 
 import { prisma } from "@/lib/db";
 import { Metadata } from "next";
+import { sanitizeSchemaMarkup, sanitizeHeaderScript } from "@/lib/sanitize";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const page = await prisma.page.findUnique({
-    where: { slug: "about" },
-  });
+  let page = null;
+  try {
+    page = await prisma.page.findUnique({
+      where: { slug: "about" },
+    });
+  } catch {
+    // DB unavailable — use hardcoded defaults
+  }
 
   const title = page?.seoTitle || "About Us | Kazzona Marketing — Best Digital Marketing Agency in Delhi NCR";
   const description = page?.seoDesc || "Learn about Kazzona Marketing, the best digital marketing agency in Delhi NCR focused on SEO, Ads, and Web Development.";
@@ -75,9 +81,14 @@ const milestones = [
 ];
 
 export default async function AboutPage() {
-  const page = await prisma.page.findUnique({
-    where: { slug: "about" },
-  });
+  let page = null;
+  try {
+    page = await prisma.page.findUnique({
+      where: { slug: "about" },
+    });
+  } catch {
+    // DB unavailable — page body is fully hardcoded, no CMS overrides
+  }
 
   const organizationSchema = {
     "@context": "https://schema.org",
@@ -122,16 +133,16 @@ export default async function AboutPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
       />
-      {page?.schemaMarkup && (
+      {page?.schemaMarkup && sanitizeSchemaMarkup(page.schemaMarkup) && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: page.schemaMarkup }}
+          dangerouslySetInnerHTML={{ __html: sanitizeSchemaMarkup(page.schemaMarkup)! }}
         />
       )}
-      {page?.headerScript && (
+      {page?.headerScript && sanitizeHeaderScript(page.headerScript) && (
         <div
           style={{ display: "none" }}
-          dangerouslySetInnerHTML={{ __html: page.headerScript }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHeaderScript(page.headerScript)! }}
         />
       )}
       {/* SECTION 1: Hero */}

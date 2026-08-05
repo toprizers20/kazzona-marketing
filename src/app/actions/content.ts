@@ -3,8 +3,40 @@
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 
 export type ContentType = "BLOG" | "PAGE";
+
+async function verifyRequestOrigin(): Promise<boolean> {
+  const hdrs = await headers();
+  const origin = hdrs.get("origin");
+  const host = hdrs.get("host");
+  if (!host) return false;
+
+  const allowedHosts = [
+    host,
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/^https?:\/\//, ""),
+    "localhost:3000",
+    "127.0.0.1:3000",
+  ].filter(Boolean);
+
+  if (origin) {
+    const originHost = new URL(origin).host;
+    return allowedHosts.includes(originHost);
+  }
+
+  const referer = hdrs.get("referer");
+  if (referer) {
+    try {
+      const refererHost = new URL(referer).host;
+      return allowedHosts.includes(refererHost);
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+}
 
 export async function createContent(data: {
   title: string;
@@ -20,6 +52,10 @@ export async function createContent(data: {
     const session = await getSession();
     if (!session || !session.email) {
       return { error: "Not authorized" };
+    }
+
+    if (!(await verifyRequestOrigin())) {
+      return { error: "Invalid request origin" };
     }
 
     const admin = await prisma.adminUser.findUnique({
@@ -94,7 +130,7 @@ export async function updateContent(
 ) {
   try {
     const session = await getSession();
-    if (!session) return { error: "Not authorized" };
+    if (!session || !session.email) return { error: "Not authorized" };
 
     if (data.type === "BLOG") {
       const existing = await prisma.post.findUnique({ where: { slug: data.slug } });
@@ -148,7 +184,7 @@ export async function updateContent(
 export async function deleteContent(id: string, type: ContentType) {
   try {
     const session = await getSession();
-    if (!session) return { error: "Not authorized" };
+    if (!session || !session.email) return { error: "Not authorized" };
 
     if (type === "BLOG") {
       await prisma.post.delete({ where: { id } });
@@ -179,6 +215,11 @@ export async function bulkCreateContent(items: {
     const session = await getSession();
     if (!session || !session.email) {
       return { error: "Not authorized" };
+    }
+
+    // Limit bulk operations to prevent abuse
+    if (items.length > 50) {
+      return { error: "Maximum 50 items per bulk upload." };
     }
 
     const admin = await prisma.adminUser.findUnique({
@@ -250,7 +291,12 @@ export async function bulkCreateContent(items: {
 export async function deleteBulkContent(items: { id: string; type: ContentType }[]) {
   try {
     const session = await getSession();
-    if (!session) return { error: "Not authorized" };
+    if (!session || !session.email) return { error: "Not authorized" };
+
+    // Limit bulk operations to prevent abuse
+    if (items.length > 100) {
+      return { error: "Maximum 100 items per bulk delete." };
+    }
 
     const blogIds = items.filter(i => i.type === "BLOG").map(i => i.id);
     const pageIds = items.filter(i => i.type === "PAGE").map(i => i.id);

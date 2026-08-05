@@ -2,7 +2,11 @@ import { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
 import { caseStudies } from "@/data/case-studies";
 
-export const dynamic = 'force-dynamic';
+// Use ISR caching instead of force-dynamic
+export const revalidate = 3600; // Revalidate every hour
+
+// Stable date for static pages (avoids changing every request)
+const STATIC_LAST_MODIFIED = new Date("2026-01-01");
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://kazzona.com";
@@ -44,27 +48,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Case studies
   const caseStudyItems = caseStudies.map((cs) => ({
     url: `${baseUrl}/case-studies/${cs.slug}`,
-    lastModified: new Date(),
+    lastModified: STATIC_LAST_MODIFIED,
     changeFrequency: "monthly" as const,
     priority: 0.7,
   }));
 
   // Static core pages
   const corePages = [
-    { url: baseUrl, lastModified: new Date(), changeFrequency: "daily" as const, priority: 1.0 },
-    { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.8 },
-    { url: `${baseUrl}/services`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.9 },
-    { url: `${baseUrl}/services/website-development`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.85 },
-    { url: `${baseUrl}/services/seo`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.85 },
-    { url: `${baseUrl}/services/advertisement`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.85 },
-    { url: `${baseUrl}/services/email-marketing`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.85 },
-    { url: `${baseUrl}/services/graphic-designing`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.85 },
-    { url: `${baseUrl}/case-studies`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.8 },
-    { url: `${baseUrl}/contact`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.9 },
-    { url: `${baseUrl}/pricing`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.85 },
-    { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: "daily" as const, priority: 0.8 },
-    { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: "yearly" as const, priority: 0.3 },
-    { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: "yearly" as const, priority: 0.3 },
+    { url: baseUrl, lastModified: STATIC_LAST_MODIFIED, changeFrequency: "daily" as const, priority: 1.0 },
+    { url: `${baseUrl}/about`, lastModified: STATIC_LAST_MODIFIED, changeFrequency: "monthly" as const, priority: 0.8 },
+    { url: `${baseUrl}/services`, lastModified: STATIC_LAST_MODIFIED, changeFrequency: "weekly" as const, priority: 0.9 },
+    { url: `${baseUrl}/services/website-development`, lastModified: STATIC_LAST_MODIFIED, changeFrequency: "weekly" as const, priority: 0.85 },
+    { url: `${baseUrl}/services/seo`, lastModified: STATIC_LAST_MODIFIED, changeFrequency: "weekly" as const, priority: 0.85 },
+    { url: `${baseUrl}/services/advertisement`, lastModified: STATIC_LAST_MODIFIED, changeFrequency: "weekly" as const, priority: 0.85 },
+    { url: `${baseUrl}/services/email-marketing`, lastModified: STATIC_LAST_MODIFIED, changeFrequency: "weekly" as const, priority: 0.85 },
+    { url: `${baseUrl}/services/graphic-designing`, lastModified: STATIC_LAST_MODIFIED, changeFrequency: "weekly" as const, priority: 0.85 },
+    { url: `${baseUrl}/case-studies`, lastModified: STATIC_LAST_MODIFIED, changeFrequency: "weekly" as const, priority: 0.8 },
+    { url: `${baseUrl}/contact`, lastModified: STATIC_LAST_MODIFIED, changeFrequency: "monthly" as const, priority: 0.9 },
+    { url: `${baseUrl}/pricing`, lastModified: STATIC_LAST_MODIFIED, changeFrequency: "monthly" as const, priority: 0.85 },
+    { url: `${baseUrl}/blog`, lastModified: STATIC_LAST_MODIFIED, changeFrequency: "daily" as const, priority: 0.8 },
+    { url: `${baseUrl}/privacy`, lastModified: STATIC_LAST_MODIFIED, changeFrequency: "yearly" as const, priority: 0.3 },
+    { url: `${baseUrl}/terms`, lastModified: STATIC_LAST_MODIFIED, changeFrequency: "yearly" as const, priority: 0.3 },
   ];
 
   return [...corePages, ...pageItems, ...postItems, ...caseStudyItems];

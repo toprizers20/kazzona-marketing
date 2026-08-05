@@ -2,11 +2,12 @@
 
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { getSession } from "@/lib/auth";
 import { sendOTP } from "@/lib/mailer";
 
-function generateOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+function generateOTP(): string {
+  return crypto.randomInt(100000, 999999).toString();
 }
 
 export async function requestPasswordChange(currentPassword: string) {
@@ -24,31 +25,26 @@ export async function requestPasswordChange(currentPassword: string) {
       return { error: "Admin user not found" };
     }
 
-    // Verify current password
     const isPasswordValid = await bcrypt.compare(currentPassword, admin.passwordHash);
     if (!isPasswordValid) {
       return { error: "Incorrect current password" };
     }
 
-    // Generate OTP
     const otp = generateOTP();
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const otpHash = await bcrypt.hash(otp, 10);
 
     await prisma.adminUser.update({
       where: { email: session.email },
       data: {
-        otpSecret: otp,
+        otpSecret: otpHash,
         otpExpiresAt,
       },
     });
 
-    // Send email
     const previewUrl = await sendOTP(session.email, otp);
 
-    return { 
-      success: true, 
-      previewUrl // Returning this purely for local debugging UI if needed, though usually just logged
-    };
+    return { success: true, previewUrl };
   } catch (error) {
     console.error("Error requesting password change:", error);
     return { error: "An unexpected error occurred." };
@@ -78,14 +74,13 @@ export async function verifyOTPAndUpdatePassword(otp: string, newPassword: strin
       return { error: "OTP has expired. Please request a new one." };
     }
 
-    if (admin.otpSecret !== otp) {
+    const isOtpValid = await bcrypt.compare(otp, admin.otpSecret);
+    if (!isOtpValid) {
       return { error: "Invalid OTP code" };
     }
 
-    // Hash new password
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
-    // Update password and clear OTP
     await prisma.adminUser.update({
       where: { email: session.email },
       data: {

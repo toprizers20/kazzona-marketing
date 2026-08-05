@@ -5,14 +5,21 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Metadata } from "next";
 import { LeadCapturePopup } from "@/components/layout/LeadCapturePopup";
+import { sanitizeSchemaMarkup, sanitizeHeaderScript, sanitizeHtml } from "@/lib/sanitize";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const post = await prisma.post.findUnique({
-    where: { slug },
-  });
+  let post = null;
+  try {
+    post = await prisma.post.findUnique({
+      where: { slug },
+    });
+  } catch {
+    // DB unavailable — return default metadata
+    return { title: "Blog Post | Kazzona Marketing" };
+  }
 
   if (!post || !post.published || (post.publishAt && post.publishAt > new Date())) {
     return { title: "Post Not Found" };
@@ -64,9 +71,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const post = await prisma.post.findUnique({
-    where: { slug },
-  });
+  let post = null;
+  try {
+    post = await prisma.post.findUnique({
+      where: { slug },
+    });
+  } catch {
+    notFound();
+  }
 
   // Verify it's published and not scheduled for the future
   if (!post || !post.published || (post.publishAt && post.publishAt > new Date())) {
@@ -74,18 +86,23 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   }
 
   // Fetch related insights (up to 3 recent posts, excluding the current one)
-  const relatedPosts = await prisma.post.findMany({
-    where: {
-      published: true,
-      slug: { not: slug },
-      OR: [
-        { publishAt: null },
-        { publishAt: { lte: new Date() } }
-      ]
-    },
-    orderBy: { createdAt: "desc" },
-    take: 3,
-  });
+  let relatedPosts: Awaited<ReturnType<typeof prisma.post.findMany>> = [];
+  try {
+    relatedPosts = await prisma.post.findMany({
+      where: {
+        published: true,
+        slug: { not: slug },
+        OR: [
+          { publishAt: null },
+          { publishAt: { lte: new Date() } }
+        ]
+      },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+    });
+  } catch {
+    // Related posts unavailable — continue without them
+  }
 
   return (
     <div className="container mx-auto px-6 py-24 max-w-7xl">
@@ -153,18 +170,26 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           ])
         }}
       />
-      {post.schemaMarkup && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: post.schemaMarkup }}
-        />
-      )}
-      {post.headerScript && (
-        <div
-          style={{ display: "none" }}
-          dangerouslySetInnerHTML={{ __html: post.headerScript }}
-        />
-      )}
+      {post.schemaMarkup && (() => {
+        const safeSchema = sanitizeSchemaMarkup(post.schemaMarkup);
+        if (!safeSchema) return null;
+        return (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: safeSchema }}
+          />
+        );
+      })()}
+      {post.headerScript && (() => {
+        const safeScript = sanitizeHeaderScript(post.headerScript);
+        if (!safeScript) return null;
+        return (
+          <div
+            style={{ display: "none" }}
+            dangerouslySetInnerHTML={{ __html: safeScript }}
+          />
+        );
+      })()}
       <Link href="/blog" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors mb-12">
         <ArrowLeft className="w-4 h-4 mr-2" />
         Back to all insights
@@ -195,7 +220,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           {/* Tiptap or Pollinations generates HTML content, rendered inside tailwind typography classes */}
           <div 
             className="prose prose-base sm:prose-lg dark:prose-invert prose-headings:font-heading prose-a:text-primary max-w-none prose-img:rounded-2xl prose-img:border prose-img:border-border/40 prose-img:shadow-sm prose-p:my-6 prose-p:leading-relaxed prose-headings:mt-12 prose-headings:mb-6 prose-ul:my-6 prose-ol:my-6 prose-li:my-2 prose-blockquote:my-8 prose-blockquote:pl-6 prose-blockquote:border-l-4 prose-blockquote:border-primary/50"
-            dangerouslySetInnerHTML={{ __html: post.content }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
           />
         </article>
 

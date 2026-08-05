@@ -4,8 +4,13 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { DEFAULT_HEADER_CONFIG, DEFAULT_FOOTER_CONFIG } from "@/lib/layout-defaults";
+import { getCached, setCache, invalidateCache, CACHE_KEYS, CACHE_TTL } from "@/lib/cache";
 
 export async function getHeaderFooterConfig() {
+  // Check cache first
+  const cached = getCached<{ header: unknown; footer: unknown }>(CACHE_KEYS.HEADER_FOOTER);
+  if (cached) return cached;
+
   try {
     const settings = await prisma.siteSettings.findUnique({
       where: { id: "global" }
@@ -19,7 +24,9 @@ export async function getHeaderFooterConfig() {
       ? JSON.parse(settings.footerConfig) 
       : DEFAULT_FOOTER_CONFIG;
 
-    return { header, footer };
+    const result = { header, footer };
+    setCache(CACHE_KEYS.HEADER_FOOTER, result, CACHE_TTL.HEADER_FOOTER);
+    return result;
   } catch (error) {
     console.error("Error fetching header-footer configs:", error);
     return {
@@ -48,6 +55,7 @@ export async function saveHeaderConfig(config: object) {
     });
 
     revalidatePath("/", "layout");
+    invalidateCache(CACHE_KEYS.HEADER_FOOTER);
     return { success: true };
   } catch (error) {
     console.error("Error saving header config:", error);
@@ -74,6 +82,7 @@ export async function saveFooterConfig(config: object) {
     });
 
     revalidatePath("/", "layout");
+    invalidateCache(CACHE_KEYS.HEADER_FOOTER);
     return { success: true };
   } catch (error) {
     console.error("Error saving footer config:", error);
@@ -91,11 +100,13 @@ export async function getNavigationOptions() {
     const [pages, posts] = await Promise.all([
       prisma.page.findMany({
         where: { published: true },
-        select: { title: true, slug: true }
+        select: { title: true, slug: true },
+        take: 200,
       }),
       prisma.post.findMany({
         where: { published: true },
-        select: { title: true, slug: true }
+        select: { title: true, slug: true },
+        take: 200,
       })
     ]);
 

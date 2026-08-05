@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
+import "@/lib/env"; // Validate env vars at startup
 import { prisma } from "@/lib/db";
 import ClientProviders from "@/components/ClientProviders";
+import { sanitizeHeaderScript } from "@/lib/sanitize";
+import { getCached, setCache, CACHE_KEYS, CACHE_TTL } from "@/lib/cache";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -69,13 +72,19 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  let settings = null;
-  try {
-    settings = await prisma.siteSettings.findUnique({
-      where: { id: "global" },
-    });
-  } catch (err) {
-    console.error("Failed to query global site settings in RootLayout:", err);
+  let settings = getCached<Record<string, string | null>>(CACHE_KEYS.SITE_SETTINGS);
+  if (!settings) {
+    try {
+      const dbSettings = await prisma.siteSettings.findUnique({
+        where: { id: "global" },
+      });
+      settings = dbSettings as Record<string, string | null> | null;
+      if (settings) {
+        setCache(CACHE_KEYS.SITE_SETTINGS, settings, CACHE_TTL.SITE_SETTINGS);
+      }
+    } catch (err) {
+      console.error("Failed to query global site settings in RootLayout:", err);
+    }
   }
 
   return (
@@ -147,10 +156,10 @@ export default async function RootLayout({
         )}
         <link rel="alternate" hrefLang="en-IN" href="https://kazzona.com" />
         <link rel="alternate" hrefLang="x-default" href="https://kazzona.com" />
-        {settings?.globalHeadCode && (
+        {settings?.globalHeadCode && sanitizeHeaderScript(settings.globalHeadCode) && (
           <div
             style={{ display: "none" }}
-            dangerouslySetInnerHTML={{ __html: settings.globalHeadCode }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHeaderScript(settings.globalHeadCode)! }}
           />
         )}
       </head>

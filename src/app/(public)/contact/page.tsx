@@ -1,11 +1,17 @@
 import ContactClient from "./ContactClient";
 import { prisma } from "@/lib/db";
 import { Metadata } from "next";
+import { sanitizeHeaderScript, sanitizeSchemaMarkup } from "@/lib/sanitize";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const page = await prisma.page.findUnique({
-    where: { slug: "contact" },
-  });
+  let page = null;
+  try {
+    page = await prisma.page.findUnique({
+      where: { slug: "contact" },
+    });
+  } catch {
+    // DB unavailable — use hardcoded defaults
+  }
 
   const metadata: Metadata = {
     title: page?.seoTitle || "Contact Us | Kazzona Marketing",
@@ -45,22 +51,27 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ContactPage() {
-  const page = await prisma.page.findUnique({
-    where: { slug: "contact" },
-  });
+  let page = null;
+  try {
+    page = await prisma.page.findUnique({
+      where: { slug: "contact" },
+    });
+  } catch {
+    // DB unavailable — render contact form without CMS overrides
+  }
 
   return (
     <>
-      {page?.schemaMarkup && (
+      {page?.schemaMarkup && sanitizeSchemaMarkup(page.schemaMarkup) && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: page.schemaMarkup }}
+          dangerouslySetInnerHTML={{ __html: sanitizeSchemaMarkup(page.schemaMarkup)! }}
         />
       )}
-      {page?.headerScript && (
+      {page?.headerScript && sanitizeHeaderScript(page.headerScript) && (
         <div
           style={{ display: "none" }}
-          dangerouslySetInnerHTML={{ __html: page.headerScript }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHeaderScript(page.headerScript)! }}
         />
       )}
       <ContactClient />

@@ -12,9 +12,9 @@ const handle = app.getRequestHandler();
 app.prepare().then(() => {
   http.createServer((req, res) => {
     handle(req, res);
-  }).listen(port, '0.0.0.0', (err) => {
+  }).listen(port, '127.0.0.1', (err) => {
     if (err) throw err;
-    console.log(`> Ready on http://0.0.0.0:${port}`);
+    console.log(`> Ready on http://127.0.0.1:${port}`);
   });
 }).catch((err) => {
   console.error(err);

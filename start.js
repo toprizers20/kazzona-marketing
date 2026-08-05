@@ -5,7 +5,7 @@ process.env.NODE_ENV = 'production';
 process.chdir(__dirname);
 
 const port = parseInt(process.env.PORT, 10) || 3000;
-const hostname = '0.0.0.0';
+const hostname = '127.0.0.1';
 
 console.log(`[kazzona] Starting server on ${hostname}:${port}...`);
 console.log(`[kazzona] Working directory: ${__dirname}`);

@@ -2,11 +2,17 @@ import HomeClient from "./HomeClient";
 import LatestBlogsHome from "./LatestBlogsHome";
 import { prisma } from "@/lib/db";
 import { Metadata } from "next";
+import { sanitizeHeaderScript, sanitizeSchemaMarkup } from "@/lib/sanitize";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const page = await prisma.page.findUnique({
-    where: { slug: "home" },
-  });
+  let page = null;
+  try {
+    page = await prisma.page.findUnique({
+      where: { slug: "home" },
+    });
+  } catch {
+    // DB unavailable — use hardcoded defaults
+  }
 
   const title = page?.seoTitle || "Kazzona Marketing | Premium Digital Marketing Agency";
   const description = page?.seoDesc || "Enterprise growth agency focused on lead generation, SEO, branding, and automation.";
@@ -54,22 +60,27 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const page = await prisma.page.findUnique({
-    where: { slug: "home" },
-  });
+  let page = null;
+  try {
+    page = await prisma.page.findUnique({
+      where: { slug: "home" },
+    });
+  } catch {
+    // DB unavailable — render page without CMS overrides
+  }
 
   return (
     <>
-      {page?.schemaMarkup && (
+      {page?.schemaMarkup && sanitizeSchemaMarkup(page.schemaMarkup) && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: page.schemaMarkup }}
+          dangerouslySetInnerHTML={{ __html: sanitizeSchemaMarkup(page.schemaMarkup)! }}
         />
       )}
-      {page?.headerScript && (
+      {page?.headerScript && sanitizeHeaderScript(page.headerScript) && (
         <div
           style={{ display: "none" }}
-          dangerouslySetInnerHTML={{ __html: page.headerScript }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHeaderScript(page.headerScript)! }}
         />
       )}
       

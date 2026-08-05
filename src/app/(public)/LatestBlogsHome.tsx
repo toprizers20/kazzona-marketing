@@ -5,17 +5,23 @@ import { ArrowRight, BookOpen } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 
 export default async function LatestBlogsHome() {
-  const posts = await prisma.post.findMany({
-    where: {
-      published: true,
-      OR: [
-        { publishAt: null },
-        { publishAt: { lte: new Date() } }
-      ]
-    },
-    orderBy: { createdAt: "desc" },
-    take: 3,
-  });
+  let posts: Awaited<ReturnType<typeof prisma.post.findMany>> = [];
+  try {
+    posts = await prisma.post.findMany({
+      where: {
+        published: true,
+        OR: [
+          { publishAt: null },
+          { publishAt: { lte: new Date() } }
+        ]
+      },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+    });
+  } catch {
+    // DB unavailable — hide the section
+    return null;
+  }
 
   if (posts.length === 0) return null;
 

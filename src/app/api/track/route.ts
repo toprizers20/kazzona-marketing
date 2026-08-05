@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { verifyOrigin } from "@/lib/csrf";
 
 // Detect device type from user agent
 function getDevice(ua: string): string {
@@ -8,8 +9,29 @@ function getDevice(ua: string): string {
   return "desktop";
 }
 
+// Simple in-memory rate limiter for track endpoint
+const trackRateLimit = new Map<string, number[]>();
+const TRACK_MAX = 30; // max 30 requests per minute per IP
+const TRACK_WINDOW = 60 * 1000;
+
+function isTrackRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const timestamps = trackRateLimit.get(ip) || [];
+  const recent = timestamps.filter((t) => now - t < TRACK_WINDOW);
+  if (recent.length >= TRACK_MAX) return true;
+  recent.push(now);
+  trackRateLimit.set(ip, recent);
+  return false;
+}
+
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit check
+    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+    if (isTrackRateLimited(ip)) {
+      return NextResponse.json({ error: "Rate limited" }, { status: 429 });
+    }
+
     const body = await req.json();
     const { visitorId, path, referrer, type } = body;
 
@@ -17,11 +39,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
+    // Validate visitorId format (should be alphanumeric, max 100 chars)
+    if (typeof visitorId !== "string" || visitorId.length > 100 || !/^[a-zA-Z0-9]+$/.test(visitorId)) {
+      return NextResponse.json({ error: "Invalid visitorId" }, { status: 400 });
+    }
+
+    // Validate path format
+    if (typeof path !== "string" || path.length > 500 || !path.startsWith("/")) {
+      return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+    }
+
     const ua = req.headers.get("user-agent") || "";
     const device = getDevice(ua);
 
     if (type === "pageview") {
-      // Record a permanent page view
       await prisma.pageView.create({
         data: {
           visitorId,
@@ -41,10 +72,13 @@ export async function POST(req: NextRequest) {
     });
 
     // Cleanup: remove visitors not seen in the last 60 seconds
-    const cutoff = new Date(Date.now() - 60_000);
-    await prisma.activeVisitor.deleteMany({
-      where: { lastSeen: { lt: cutoff } },
-    });
+    // Only run cleanup periodically to reduce DB load
+    if (Math.random() < 0.1) { // 10% chance per request
+      const cutoff = new Date(Date.now() - 60_000);
+      await prisma.activeVisitor.deleteMany({
+        where: { lastSeen: { lt: cutoff } },
+      });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {

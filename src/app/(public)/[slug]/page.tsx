@@ -1,12 +1,18 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
+import { sanitizeHeaderScript, sanitizeSchemaMarkup } from "@/lib/sanitize";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const page = await prisma.page.findUnique({
-    where: { slug },
-  });
+  let page = null;
+  try {
+    page = await prisma.page.findUnique({
+      where: { slug },
+    });
+  } catch {
+    return { title: "Page | Kazzona Marketing" };
+  }
 
   if (!page || !page.published || (page.publishAt && page.publishAt > new Date())) {
     return { title: "Not Found" };
@@ -57,9 +63,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function DynamicPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const page = await prisma.page.findUnique({
-    where: { slug },
-  });
+  let page = null;
+  try {
+    page = await prisma.page.findUnique({
+      where: { slug },
+    });
+  } catch {
+    notFound();
+  }
 
   if (!page || !page.published || (page.publishAt && page.publishAt > new Date())) {
     notFound();
@@ -125,16 +136,16 @@ export default async function DynamicPage({ params }: { params: Promise<{ slug: 
           ])
         }}
       />
-      {page.schemaMarkup && (
+      {page.schemaMarkup && sanitizeSchemaMarkup(page.schemaMarkup) && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: page.schemaMarkup }}
+          dangerouslySetInnerHTML={{ __html: sanitizeSchemaMarkup(page.schemaMarkup)! }}
         />
       )}
-      {page.headerScript && (
+      {page.headerScript && sanitizeHeaderScript(page.headerScript) && (
         <div
           style={{ display: "none" }}
-          dangerouslySetInnerHTML={{ __html: page.headerScript }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHeaderScript(page.headerScript)! }}
         />
       )}
       <div className="pt-32 pb-24 border-b border-border/50 bg-secondary/20 relative overflow-hidden">

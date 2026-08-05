@@ -66,3 +66,6 @@ ops/backups/*
 !ops/backups/.gitkeep
 ops/logs/*
 !ops/logs/.gitkeep
+
+# Scripts config (operational state)
+scripts/config.json

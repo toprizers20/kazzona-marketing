@@ -6,6 +6,11 @@ export async function searchGlobal(q: string) {
   if (!q.trim()) return { blogs: [], pages: [] };
   
   const searchString = q.trim();
+  
+  // Limit search string length to prevent abuse
+  if (searchString.length > 200) {
+    return { blogs: [], pages: [] };
+  }
 
   const blogResults = await prisma.post.findMany({
     where: {

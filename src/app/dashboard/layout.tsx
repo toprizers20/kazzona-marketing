@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { 
   LayoutDashboard, 
@@ -20,6 +20,7 @@ import {
   Menu
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { logoutAction } from "@/app/actions/auth";
 
 const sidebarLinks = [
   { name: "Overview", icon: LayoutDashboard, href: "/dashboard" },
@@ -41,7 +42,31 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    // Check if user is authenticated by trying to fetch a protected resource
+    fetch("/api/auth/check")
+      .then((res) => {
+        if (res.ok) {
+          setIsAuthenticated(true);
+        } else {
+          window.location.href = "/sign-in";
+        }
+      })
+      .catch(() => {
+        window.location.href = "/sign-in";
+      });
+  }, []);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-screen bg-background items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const SidebarContent = () => (
     <>
@@ -87,7 +112,7 @@ export default function DashboardLayout({
           <Link href="/dashboard/settings" onClick={() => setMobileMenuOpen(false)} className="text-muted-foreground hover:text-primary transition-colors shrink-0">
             <Settings className="w-4 h-4" />
           </Link>
-          <form action="/api/auth/logout" method="POST" className="shrink-0">
+          <form action={logoutAction} className="shrink-0">
             <button type="submit" className="text-muted-foreground hover:text-destructive transition-colors flex items-center">
               <LogOut className="w-4 h-4" />
             </button>

@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { slugify } from "@/lib/utils";
 
 const CONFIG_FILE = path.resolve(process.cwd(), "scripts/config.json");
 
@@ -51,34 +52,25 @@ export async function getAutopilotConfig(): Promise<AutopilotConfig> {
   }
 }
 
-// Write config
+// Write config atomically (write to temp file, then rename)
 export async function updateAutopilotConfig(config: Partial<AutopilotConfig>) {
   try {
     const session = await getSession();
-    if (!session) return { error: "Not authorized" };
+    if (!session || !session.email) return { error: "Not authorized" };
 
     const current = await getAutopilotConfig();
     const updated = { ...current, ...config };
 
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(updated, null, 2));
+    // Atomic write: write to temp file first, then rename
+    const tmpPath = CONFIG_FILE + ".tmp";
+    fs.writeFileSync(tmpPath, JSON.stringify(updated, null, 2));
+    fs.renameSync(tmpPath, CONFIG_FILE);
     return { success: true, config: updated };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Failed to write autopilot config:", err);
-    return { error: err.message || "Failed to update config" };
+    const message = err instanceof Error ? err.message : "Failed to update config";
+    return { error: message };
   }
-}
-
-// Simple regex-based slugify function
-function slugify(text: string) {
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w\-]+/g, '')
-    .replace(/\-\-+/g, '-')
-    .replace(/^-+/, '')
-    .replace(/-+$/, '');
 }
 
 // Helper: Fetch text content from Pollinations AI
@@ -182,8 +174,9 @@ export async function triggerAutopilotInstant(taskId?: string) {
     let localImagePath = "";
     try {
       localImagePath = await downloadBannerImage(topic, slug);
-    } catch (err: any) {
-      console.warn("Banner image download failed, using default fallback image copy:", err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      console.warn("Banner image download failed, using default fallback image copy:", msg);
       // Failsafe: copy existing files if available, otherwise write default placeholder
       try {
         const uploadDir = path.resolve(process.cwd(), "public/uploads/banners");
@@ -266,7 +259,8 @@ export async function triggerAutopilotInstant(taskId?: string) {
         if (titleLine) seoTitle = titleLine.replace(/^TITLE:/i, '').trim();
         if (descLine) seoDesc = descLine.replace(/^DESC:/i, '').trim();
       } catch (e) {}
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
       console.warn("AI content generation failed (probably rate-limit or 502). Using robust pre-written template fallback.");
       const { getTemplateByTopic } = await import("@/lib/fallbackTemplates");
       const template = getTemplateByTopic(topic);
@@ -363,8 +357,9 @@ export async function triggerAutopilotInstant(taskId?: string) {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
 
     return { success: true, topic, slug };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Autopilot generation failed completely:", err);
+    const message = err instanceof Error ? err.message : "Autopilot generation failed";
     if (activeTaskId) {
       await prisma.aiGenerationTask.update({
         where: { id: activeTaskId },
@@ -381,13 +376,13 @@ export async function triggerAutopilotInstant(taskId?: string) {
         slug: "",
         status: "FAILED",
         timestamp: new Date().toISOString(),
-        error: err.message || "Unknown error",
+        error: (err instanceof Error ? err.message : "Unknown error") || "Unknown error",
       });
       config.history = config.history.slice(0, 15);
       fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
     } catch (e) {}
 
-    return { error: err.message || "Autopilot generation failed" };
+    return { error: message || "Autopilot generation failed" };
   }
 }
 
@@ -419,8 +414,9 @@ export async function rescheduleTask(taskId: string, newDate: string) {
     });
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Failed to reschedule task:", err);
-    return { error: err.message || "Failed to reschedule" };
+    const message = err instanceof Error ? err.message : "Failed to reschedule";
+    return { error: message };
   }
 }

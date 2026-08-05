@@ -38,20 +38,28 @@ export async function getSEOContentList(): Promise<SEOContentItem[]> {
       throw new Error("Unauthorized");
     }
 
-    // Auto-seed default static pages if missing
-    for (const p of DEFAULT_STATIC_PAGES) {
-      const existing = await prisma.page.findUnique({ where: { slug: p.slug } });
-      if (!existing) {
-        await prisma.page.create({
-          data: {
-            slug: p.slug,
-            title: p.title,
-            content: `Static content for ${p.title}`,
-            published: true,
-            seoTitle: p.seoTitle,
-            seoDesc: p.seoDesc,
-          },
-        });
+    // Auto-seed default static pages if missing (atomic batch insert)
+    const existingSlugs = await prisma.page.findMany({
+      where: { slug: { in: DEFAULT_STATIC_PAGES.map(p => p.slug) } },
+      select: { slug: true },
+    });
+    const existingSet = new Set(existingSlugs.map(e => e.slug));
+    const missingPages = DEFAULT_STATIC_PAGES
+      .filter(p => !existingSet.has(p.slug))
+      .map(p => ({
+        slug: p.slug,
+        title: p.title,
+        content: `Static content for ${p.title}`,
+        published: true,
+        seoTitle: p.seoTitle,
+        seoDesc: p.seoDesc,
+      }));
+
+    if (missingPages.length > 0) {
+      try {
+        await prisma.page.createMany({ data: missingPages });
+      } catch {
+        // Ignore duplicate errors from concurrent calls
       }
     }
 
@@ -269,6 +277,7 @@ export async function getRedirects() {
 
     return await prisma.redirect.findMany({
       orderBy: { createdAt: "desc" },
+      take: 200,
     });
   } catch (error) {
     console.error("Error in getRedirects:", error);

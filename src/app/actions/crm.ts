@@ -3,10 +3,29 @@
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 
-// Simple in-memory rate limiter: max 3 submissions per email per 5 minutes
+// Simple in-memory rate limiter with periodic cleanup
 const submissionCache = new Map<string, number[]>();
+const CLEANUP_INTERVAL = 5 * 60 * 1000;
+
+let lastCleanup = Date.now();
+function cleanupIfNeeded() {
+  const now = Date.now();
+  if (now - lastCleanup < CLEANUP_INTERVAL) return;
+  lastCleanup = now;
+  
+  const fiveMinutes = 5 * 60 * 1000;
+  for (const [email, timestamps] of submissionCache.entries()) {
+    const recent = timestamps.filter((t) => now - t < fiveMinutes);
+    if (recent.length === 0) {
+      submissionCache.delete(email);
+    } else {
+      submissionCache.set(email, recent);
+    }
+  }
+}
 
 function isRateLimited(email: string): boolean {
+  cleanupIfNeeded();
   const now = Date.now();
   const fiveMinutes = 5 * 60 * 1000;
   const timestamps = submissionCache.get(email) || [];
@@ -28,12 +47,10 @@ export async function submitLead(data: {
   source?: string;
 }) {
   try {
-    // Rate limit check
     if (isRateLimited(data.email)) {
       return { error: "Too many submissions. Please wait a few minutes before trying again." };
     }
 
-    // Basic validation
     if (!data.name?.trim() || !data.email?.trim() || !data.message?.trim()) {
       return { error: "Please fill in all required fields." };
     }

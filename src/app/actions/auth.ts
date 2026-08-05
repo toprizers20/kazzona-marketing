@@ -1,15 +1,32 @@
 "use server";
 
-import { login } from "@/lib/auth";
+import { login, logout } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { revalidatePath } from "next/cache";
 
-// Brute force protection - in-memory rate limiter
+// Brute force protection - in-memory rate limiter with periodic cleanup
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+const CLEANUP_INTERVAL = 5 * 60 * 1000; // Clean up every 5 minutes
+
+// Periodic cleanup to prevent memory leaks
+let lastCleanup = Date.now();
+function cleanupIfNeeded() {
+  const now = Date.now();
+  if (now - lastCleanup < CLEANUP_INTERVAL) return;
+  lastCleanup = now;
+  
+  for (const [email, record] of loginAttempts.entries()) {
+    if (now - record.lastAttempt > LOCKOUT_DURATION) {
+      loginAttempts.delete(email);
+    }
+  }
+}
 
 function checkRateLimit(email: string): boolean {
+  cleanupIfNeeded();
   const now = Date.now();
   const record = loginAttempts.get(email);
 
@@ -38,7 +55,6 @@ function recordFailedAttempt(email: string) {
 
 export async function authenticate(email: string, password: string) {
   try {
-    // Rate limit check
     if (!checkRateLimit(email)) {
       return { error: "Too many failed attempts. Please try again after 15 minutes." };
     }
@@ -59,14 +75,17 @@ export async function authenticate(email: string, password: string) {
       return { error: "Invalid email or password." };
     }
 
-    // Success - clear rate limit
     loginAttempts.delete(email);
 
-    // Password is valid, create session
     await login(email);
     return { success: true };
   } catch (error) {
     console.error("Auth error:", error);
     return { error: "Server error. Please try again." };
   }
+}
+
+export async function logoutAction() {
+  await logout();
+  revalidatePath("/", "layout");
 }

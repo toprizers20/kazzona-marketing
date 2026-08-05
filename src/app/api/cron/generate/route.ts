@@ -1,18 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-
-// Simple regex-based slugify function
-function slugify(text: string) {
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w\-]+/g, '')
-    .replace(/\-\-+/g, '-')
-    .replace(/^-+/, '')
-    .replace(/-+$/, '');
-}
+import { slugify } from "@/lib/utils";
 
 // Helper: Fetch text content from Pollinations AI
 async function fetchAIContent(promptText: string): Promise<string> {
@@ -23,13 +11,20 @@ async function fetchAIContent(promptText: string): Promise<string> {
       throw new Error(`HTTP error! status: ${res.status}`);
     }
     return await res.text();
-  } catch (err: any) {
-    console.error("AI Text Fetch Error:", err.message);
-    return `<p>Error generating content from AI: ${err.message}</p>`;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("AI Text Fetch Error:", message);
+    return `<p>Error generating content from AI: ${message}</p>`;
   }
 }
 
 export async function POST(req: Request) {
+  // Verify CRON_SECRET for external scheduler auth
+  const authHeader = req.headers.get("authorization");
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const now = new Date();
     
@@ -103,16 +98,19 @@ export async function POST(req: Request) {
           console.warn("Failed to parse AI meta tags, using fallbacks.");
         }
 
-        // 3. Ensure unique slug
+        // 3. Ensure unique slug (max 50 attempts to prevent infinite loop)
         const baseSlug = slugify(topic);
         let uniqueSlug = baseSlug;
         let counter = 1;
-        while (true) {
+        while (counter <= 50) {
           const existingPost = await prisma.post.findUnique({ where: { slug: uniqueSlug } });
           const existingPage = await prisma.page.findUnique({ where: { slug: uniqueSlug } });
           if (!existingPost && !existingPage) break;
           uniqueSlug = `${baseSlug}-${counter}`;
           counter++;
+        }
+        if (counter > 50) {
+          throw new Error(`Could not generate unique slug for "${topic}" after 50 attempts`);
         }
 
         // 4. Download Banner Image locally (must succeed before publishing)
@@ -133,8 +131,9 @@ export async function POST(req: Request) {
           const filepath = path.join(uploadDir, `${uniqueSlug}.jpg`);
           fs.writeFileSync(filepath, buf);
           localImagePath = `/uploads/banners/${uniqueSlug}.jpg`;
-        } catch (imgErr: any) {
-          throw new Error(`Banner image generation failed: ${imgErr.message}`);
+        } catch (imgErr: unknown) {
+          const imgMsg = imgErr instanceof Error ? imgErr.message : "Unknown error";
+          throw new Error(`Banner image generation failed: ${imgMsg}`);
         }
         const imageHtml = `<img src="${localImagePath}" alt="${topic}" class="w-full h-[400px] object-cover rounded-2xl mb-8 border border-border/40 shadow-sm" />\n`;
         rawHtmlContent = imageHtml + rawHtmlContent;
@@ -150,8 +149,9 @@ export async function POST(req: Request) {
               <p class="text-sm text-muted-foreground m-0">Continue learning: <a href="/blog/${randomPost.slug}" class="text-primary font-bold hover:underline">${randomPost.title}</a></p>
             </div>`;
           }
-        } catch (err: any) {
-          console.warn("Failed to fetch posts for internal linking:", err.message);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "Unknown error";
+          console.warn("Failed to fetch posts for internal linking:", msg);
         }
 
         // 6. Create content in DB
