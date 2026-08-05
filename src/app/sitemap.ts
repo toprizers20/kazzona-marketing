@@ -2,8 +2,9 @@ import { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
 import { caseStudies } from "@/data/case-studies";
 
-// Use ISR caching instead of force-dynamic
-export const revalidate = 3600; // Revalidate every hour
+// Force dynamic — generated at request time, not build time
+// This avoids DB connection failures during static generation on Hostinger
+export const dynamic = "force-dynamic";
 
 // Stable date for static pages (avoids changing every request)
 const STATIC_LAST_MODIFIED = new Date("2026-01-01");
@@ -11,17 +12,23 @@ const STATIC_LAST_MODIFIED = new Date("2026-01-01");
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://kazzona.com";
 
-  // Get all published blog posts
-  const posts = await prisma.post.findMany({
-    where: { published: true },
-    select: { slug: true, updatedAt: true },
-  });
+  let posts: { slug: string; updatedAt: Date }[] = [];
+  let pages: { slug: string; updatedAt: Date }[] = [];
 
-  // Get all published pages
-  const pages = await prisma.page.findMany({
-    where: { published: true },
-    select: { slug: true, updatedAt: true },
-  });
+  try {
+    [posts, pages] = await Promise.all([
+      prisma.post.findMany({
+        where: { published: true },
+        select: { slug: true, updatedAt: true },
+      }),
+      prisma.page.findMany({
+        where: { published: true },
+        select: { slug: true, updatedAt: true },
+      }),
+    ]);
+  } catch {
+    // DB unavailable — return only static pages
+  }
 
   // Dynamic blog post sitemap items
   const postItems = posts.map((p) => ({
