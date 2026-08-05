@@ -5,6 +5,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import ScrollToTop from "@/components/ScrollToTop";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import PageTransition from "@/components/PageTransition";
+import { OfferPopup } from "@/components/ui/OfferPopup";
 
 export default function ClientProviders({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -16,6 +17,7 @@ export default function ClientProviders({ children }: { children: React.ReactNod
       <PageTransition>{children}</PageTransition>
       <ScrollToTop />
       {!isDashboard && <WhatsAppButton />}
+      {!isDashboard && <OfferPopup />}
     </>
   );
 }

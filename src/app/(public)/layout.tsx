@@ -3,7 +3,6 @@ import { Footer } from "@/components/layout/footer";
 import { AnalyticsTracker } from "@/components/AnalyticsTracker";
 import { cookies } from "next/headers";
 import { getHeaderFooterConfig } from "@/app/actions/header-footer";
-import { OfferPopup } from "@/components/ui/OfferPopup";
 import NewsletterSignup from "@/components/NewsletterSignup";
 export default async function PublicLayout({
   children,
@@ -25,7 +24,6 @@ export default async function PublicLayout({
         <NewsletterSignup />
       </div>
       <Footer config={footer} />
-      <OfferPopup />
     </div>
   );
 }
