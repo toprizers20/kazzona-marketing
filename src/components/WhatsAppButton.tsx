@@ -54,12 +54,18 @@ export default function WhatsAppButton() {
 
   return (
     <div className="fixed bottom-6 left-6 z-50">
-      {/* Form Popup */}
+      {/* Form Popup - Centered on screen */}
       <div
-        className={`absolute bottom-16 left-0 w-[340px] bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-gray-100 overflow-hidden transition-all duration-300 ${
-          showForm ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-4 pointer-events-none"
+        className={`fixed inset-0 z-[200] flex items-center justify-center p-4 transition-all duration-300 ${
+          showForm ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
       >
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleClose} />
+        <div
+          className={`relative w-full max-w-[340px] bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-gray-100 overflow-hidden transition-all duration-300 ${
+            showForm ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-4"
+          }`}
+        >
         {/* Header */}
         <div className="bg-[#128C7E] px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -172,6 +178,7 @@ export default function WhatsAppButton() {
             <p className="text-xs text-gray-500 mt-1">We&apos;ll reply on WhatsApp soon.</p>
           </div>
         )}
+        </div>
       </div>
 
       {/* Button */}
